@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Seattle Tree Species and Coverage</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+
+.fly {
+            display: inline-block; /* displays over the map */
+            position: relative; /* displays over the map */
+            margin: 0px auto; 
+            width: 15%;  /* width of parent div */
+            padding: 10px;
+            border-style: solid;
+            border-color: oldlace;
+            border-radius: 3px; /* rounded corners */
+            font-size: 1em;
+            text-align: center;
+            font-weight: bold;
+            color: oldlace;
+            background: rgb(192, 105, 230);
+            cursor:pointer;
+        }
+
+      button {
+     font-family: 'Lovers Quarrel', serif;
+     font-weight: 600;
+    }
+
+.legend {
+background-color: #fff;
+border-radius: 3px;
+bottom: 30px;
+box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+padding: 10px;
+position: absolute;
+right: 10px;
+z-index: 1;
+}
+ 
+.legend h4 {
+margin: 0 0 10px;
+}
+ 
+.legend div span {
+border-radius: 50%;
+display: inline-block;
+height: 20px;
+margin-right: 5px;
+width: 20px;
+}
+          /*  stlye for paragraph tags */
+   p {
+     color: white;
+   }
+
+   /* style for heading level 4 tags */
+   h4 {
+     color: black;
+     margin-left: 10px;
+   }
+
+   /*  style for items with the class "LegendContainer" */
+   .LegendContainer {
+     position: absolute;
+     bottom: 20px;
+     left: 20px;
+     z-index: 2;
+     width: 300px;
+     height: 50px;
+     background: rgba(80, 80, 80, .75);
+     transition: width 2s, height 2s; /* this is the time it takes for the container to transition */
+     border-radius: 7px;
+   }
+
+   /*  style for items with the class "descriptionPanel" */
+   .descriptionPanel {
+     position: absolute;
+     bottom: 65px;
+     left: 20px;
+     z-index: 2;
+     width: 400px;
+     height: 50px;
+     background: rgba(80, 80, 80, .75);
+     transition: width 2s, height 2s;
+     overflow: hidden;
+     border-radius: 7px;
+   }
+
+   /*  style for items with the class "descriptionPanel" when active */
+   .LegendContainer:active {
+     width: 240px;
+     height: 250px;
+   }
+
+   /* style for items with the class "legendItem" */
+   .legendItem {
+       margin: 0px;
+       padding-left: 10px;
+       display:inline-block;
+       margin:auto;
+       transform: translate(50%, 50%);
+   }
+        
+
+   /* style for items with the class "layerDescription" */
+   .layerDescription {
+     color: white;
+     padding-left: 1px;
+   }
+
+        
+   .cherry {
+         color:#007848;
+   }
+   .fir{
+         color: #86f4f7;
+   }
+   .hemlock{
+        color: #fc94af;
+   }
+
+   /* style for items with the class "chevron" */
+   .chevron {
+     position: relative;
+     margin-left: 45%;
+     font-size: x-large;
+     color: white;
+   }
+
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+    </style>
+</head>
+<body>
+
+  <div id='map'></div>
+
+  <button class='fly' id='SeattleButton'>Zoom Out</button>
+  <button class='fly' id='SeattleZoom'>Zoom To Center</button>
+
+  <div id="state-legend" class="legend">
+    <h4>Tree Types in Clusters</h4>
+    <div><span style="background-color: #86f4f7"></span>Douglas Fir</div>
+    <div><span style="background-color: #007848"></span>Yoshino Cherry</div>
+    <div><span style="background-color: #fc94af"></span>Western Hemlock</div>
+    </div>
+  <!-- map description panel -->
+  <div class="descriptionPanel" id="descriptionPanel" style="height: 250px;">
+    <span onClick=panelSelect() id="glyph" class="chevron glyphicon glyphicon-chevron-down"></span>
+    <hr/>
+    <h4>WHAT IS THIS MAP SHOWING?</h4>
+    <p style="margin-left: 10px; margin-right: 10px;">
+      This is a map showing the Seattle tree species and tree coverage. 
+      Each dot represents a tree, and each color represents a different tree species.
+      The three most popular trees in Seattle are Douglas Fir, Yoshino Cherry, and Western Hemlock.
+      The clusters reveal the ratio of those three species based on location.
+      The number in the cluster represents the number of data points at that location.
+    </p>
+  </div>
+    </div>
+  </div>
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYW5uYWFudG9ubiIsImEiOiJjbGc1ZmpobTgwMnhxM2ZsaWZpZHFpYzBqIn0.qbe0Bda-puPdFQjmCDIqWg'; 
+    var map = new mapboxgl.Map({
+        container: 'map', // container id
+        style: 'mapbox://styles/annaantonn/clic94jmv002w01r9c96u984f', // stylesheet location
+    });
+
+    //map.addControl(new mapboxgl.NavigationControl());
+
+    const nav = new mapboxgl.NavigationControl();
+    map.addControl(nav, 'top-right');
+
+    const name1 = ['<', ['get', 'SCIENTIFIC_NAME'], 'Pseudotsuga menziesii'];
+  const name2 = ['all', ['>=', ['get', 'SCIENTIFIC_NAME'], 'Pseudotsuga menziesii'], ['<', ['get', 'SCIENTIFIC_NAME'], 'Prunus x yedoensis']];
+  const name3 = ['all', ['>=', ['get', 'SCIENTIFIC_NAME'], 'Prunus x yedoensis'], ['<', ['get', 'SCIENTIFIC_NAME'], 'Tsuga heterophylla']];
+  const name4 = ['all', ['>=', ['get', 'SCIENTIFIC_NAME'], 'Tsuga heterophylla'], ['<', ['get', 'SCIENTIFIC_NAME'], 'Thuja plicata']];
+  const name5 = ['>=', ['get', 'SCIENTIFIC_NAME'], 'Thuja plicata'];
+
+  const colors = ['#86f4f7', '#007848', '#fc94af', '#7a4988', '#4aba51'];
+
+  map.on('load', () => {
+// add a clustered GeoJSON source
+map.addSource('trees', {
+'type': 'geojson',
+'data': 'https://data-seattlecitygis.opendata.arcgis.com/datasets/SeattleCityGIS::trees.geojson?outSR=%7B%22latestWkid%22%3A2926%2C%22wkid%22%3A2926%7D',
+'cluster': true,
+'clusterRadius': 80,
+'clusterProperties': {
+// keep separate counts for each tree category in a cluster
+'name1': ['+', ['case', name1, 1, 0]],
+'name2': ['+', ['case', name2, 1, 0]],
+'name3': ['+', ['case', name3, 1, 0]],
+'name4': ['+', ['case', name4, 1, 0]],
+'name5': ['+', ['case', name5, 1, 0]]
+}
+});
+
+// circle and symbol layers
+map.addLayer({
+'id': 'tree_circle',
+'type': 'circle',
+'source': 'trees',
+'filter': ['!=', 'cluster', true],
+'paint': {
+'circle-color': [
+'case',
+name1,
+colors[0],
+name2,
+colors[1],
+name3,
+colors[2],
+name4,
+colors[3],
+colors[4]
+],
+'circle-opacity': 0.6,
+'circle-radius': 12
+}
+});
+
+map.addLayer({
+'id': 'tree_label',
+'type': 'symbol',
+'source': 'trees',
+'filter': ['!=', 'cluster', true],
+'layout': {
+'text-field': [
+'number-format',
+['get', 'SCIENTIFIC_NAME'],
+{ 'min-fraction-digits': 1, 'max-fraction-digits': 1 }
+],
+'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+'text-size': 10
+},
+'paint': {
+'text-color': [
+'case',
+['<', ['get', 'SCIENTIFIC_NAME'], 3],
+'black',
+'white'
+]
+}
+});
+
+// objects for caching and keeping track of HTML marker objects (for performance)
+const markers = {};
+let markersOnScreen = {};
+ 
+function updateMarkers() {
+const newMarkers = {};
+const features = map.querySourceFeatures('trees');
+
+// for every cluster on the screen, create an HTML marker for it (if we didn't yet),
+// and add it to the map if it's not there already
+for (const feature of features) {
+const coords = feature.geometry.coordinates;
+const props = feature.properties;
+if (!props.cluster) continue;
+const id = props.cluster_id;
+ 
+let marker = markers[id];
+if (!marker) {
+const el = createDonutChart(props);
+marker = markers[id] = new mapboxgl.Marker({
+element: el
+}).setLngLat(coords);
+}
+newMarkers[id] = marker;
+ 
+if (!markersOnScreen[id]) marker.addTo(map);
+}
+// for every marker we've added previously, remove those that are no longer visible
+for (const id in markersOnScreen) {
+if (!newMarkers[id]) markersOnScreen[id].remove();
+}
+markersOnScreen = newMarkers;
+}
+// after the GeoJSON data is loaded, update markers on the screen on every frame
+map.on('render', () => {
+if (!map.isSourceLoaded('trees')) return;
+updateMarkers();
+});
+});
+// code for creating an SVG donut chart from feature properties
+function createDonutChart(props) {
+const offsets = [];
+const counts = [
+props.name1,
+props.name2,
+props.name3,
+props.name4,
+props.name5
+];
+let total = 0;
+for (const count of counts) {
+offsets.push(total);
+total += count;
+}
+const fontSize =
+total >= 1000 ? 22 : total >= 100 ? 20 : total >= 10 ? 18 : 16;
+const r =
+total >= 1000 ? 50 : total >= 100 ? 32 : total >= 10 ? 24 : 18;
+const r0 = Math.round(r * 0.6);
+const w = r * 2;
+
+let html = `<div>
+<svg width="${w}" height="${w}" viewbox="0 0 
+${w} ${w}" text-anchor="middle" style="font: 
+${fontSize}px sans-serif; display: block">`;
+
+for (let i = 0; i < counts.length; i++) {
+html += donutSegment(
+offsets[i] / total,
+(offsets[i] + counts[i]) / total,
+r,
+r0,
+colors[i]
+);
+}
+
+html += `<circle cx="${r}" cy="${r}" r="${r0}" fill="white" />
+<text dominant-baseline="central" transform="translate(${r}, ${r})">
+${total.toLocaleString()}
+</text>
+</svg>
+</div>`;
+ 
+const el = document.createElement('div');
+el.innerHTML = html;
+return el.firstChild;
+}
+
+function donutSegment(start, end, r, r0, color) {
+if (end - start === 1) end -= 0.00001;
+const a0 = 2 * Math.PI * (start - 0.25);
+const a1 = 2 * Math.PI * (end - 0.25);
+const x0 = Math.cos(a0),
+y0 = Math.sin(a0);
+const x1 = Math.cos(a1),
+y1 = Math.sin(a1);
+const largeArc = end - start > 0.5 ? 1 : 0;
+ 
+// draw an SVG path
+return `<path d="M ${r + r0 * x0} ${r + r0 * y0} L ${r + r * x0} ${
+r + r * y0
+} A ${r} ${r} 0 ${largeArc} 1 ${r + r * x1} ${r + r * y1} L ${
+r + r0 * x1
+} ${r + r0 * y1} A ${r0} ${r0} 0 ${largeArc} 0 ${r + r0 * x0} ${
+r + r0 * y0
+}" fill="${color}" />`;
+}
+
+
+    // legend interaction
+
+    var state = { panelOpen: true };
+
+      function panelSelect(e){
+        if(state.panelOpen){
+          document.getElementById('descriptionPanel').style.height = '26px';
+          document.getElementById('glyph').className = "chevron glyphicon glyphicon-chevron-up";
+          state.panelOpen = false;
+        } else {
+          document.getElementById('descriptionPanel').style.height = '250px';
+          document.getElementById('glyph').className = "chevron glyphicon glyphicon-chevron-down";
+          state.panelOpen = true;
+        }
+      }
+
+    // Add a 'Listener' to the button element with the ID 'PortlandButton'.
+document.getElementById('SeattleButton').addEventListener('click', function () {
+        map.jumpTo({
+            center:[-122.3321, 47.6062], 
+            zoom: 5
+        });
+});
+
+document.getElementById('SeattleZoom').addEventListener('click', function () {
+        map.jumpTo({
+            center:[-122.3321, 47.6062], 
+            zoom: 12
+        });
+});
+  </script>
+
+</body>
+</html>
